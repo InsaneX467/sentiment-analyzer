@@ -1,0 +1,1 @@
+This app analyzes sentiment (positive, negative, neutral) from input text using Streamlit and Textblob.
