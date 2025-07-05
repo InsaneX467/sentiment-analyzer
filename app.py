@@ -1,48 +1,28 @@
 import streamlit as st
-import speech_recognition as sr
 from textblob import TextBlob
 
-st.set_page_config(page_title="Sentiment Analyzer", page_icon=":smile:")
+# Page config
+st.set_page_config(page_title="Sentiment Analyzer", page_icon="💬")
+
+# Title
 st.title("🧠 AI Sentiment Analyzer")
 
-# Function to get voice input
-def get_voice_input():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("Listening... Speak now!")
-        audio = recognizer.listen(source)
-        try:
-            text = recognizer.recognize_google(audio)
-        except sr.UnknownValueError:
-            text = "Could not understand audio"
-        except sr.RequestError:
-            text = "Could not request results"
-    return text
+# Text input
+st.subheader("Enter your text below:")
+text_input = st.text_area("Write something...", "")
 
-# Text input field
-txt_input = st.text_area("Enter your text here or use voice input:", "")
-
-# Voice input button
-if st.button("🎙 Use Voice Input"):
-    voice_text = get_voice_input()
-    if voice_text:
-        txt_input = voice_text
-        st.success(f"Recognized Voice Input: {voice_text}")
-
-# Analyze sentiment
-if st.button("🔍 Analyze"):
-    if txt_input.strip() != "":
-        blob = TextBlob(txt_input)
+# Analyze button
+if st.button("Analyze Sentiment"):
+    if text_input.strip() != "":
+        blob = TextBlob(text_input)
         sentiment = blob.sentiment.polarity
 
-        st.subheader("Sentiment Analysis Result")
+        st.subheader("Sentiment Analysis Result:")
         if sentiment > 0:
-            st.success("😊 Positive Sentiment")
+            st.success("Positive 😊")
         elif sentiment < 0:
-            st.error("😞 Negative Sentiment")
+            st.error("Negative 😠")
         else:
-            st.info("😐 Neutral Sentiment")
-
-        st.write(f"*Sentiment Score:* {sentiment}")
+            st.info("Neutral 😐")
     else:
-        st.warning("Please enter some text to analyze.")
+        st.warning("Please enter some text.")
