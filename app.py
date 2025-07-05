@@ -2,7 +2,7 @@ import streamlit as st
 import speech_recognition as sr
 from textblob import TextBlob
 
-st.set_page_config(title="Sentiment Analyzer", page_icon=":smile:")
+st.set_page_config(page_title="Sentiment Analyzer", page_icon=":smile:")
 st.title("🧠 AI Sentiment Analyzer")
 
 # Function to get voice input
