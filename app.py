@@ -1,45 +1,48 @@
 import streamlit as st
+import speech_recognition as sr
 from textblob import TextBlob
-import pandas as pd
-import re
 
-st.set_page_config(page_title="Sentiment Analyzer", layout="centered")
+st.set_page_config(title="Sentiment Analyzer", page_icon="🧠")
+st.title("🧠 AI Sentiment Analyzer")
 
-# --- Preprocessing function ---
-def clean_text(text):
-    text = re.sub(r"http\S+", "", text)  # remove URLs
-    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)  # remove special chars/emojis
-    text = text.strip()
+# Function to get voice input
+def get_voice_input():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening... Speak now!")
+        audio = recognizer.listen(source)
+        try:
+            text = recognizer.recognize_google(audio)
+        except sr.UnknownValueError:
+            text = "Could not understand audio"
+        except sr.RequestError:
+            text = "Could not request results"
     return text
 
-# --- App title ---
-st.title("🧠 Sentiment Analyzer")
-st.write("Analyze your text sentiment with feedback, score, and export option.")
+# Text input field
+txt_input = st.text_area("Enter your text here or use voice input:", "")
 
-# --- User input ---
-user_input = st.text_area("Enter text here:")
+# Voice input button
+if st.button("🎙 Use Voice Input"):
+    voice_text = get_voice_input()
+    if voice_text:
+        txt_input = voice_text
+        st.success(f"Recognized Voice Input: {voice_text}")
 
-if user_input:
-    cleaned_text = clean_text(user_input)
-    analysis = TextBlob(cleaned_text)
-    score = analysis.sentiment.polarity
+# Analyze sentiment
+if st.button("🔍 Analyze"):
+    if txt_input.strip() != "":
+        blob = TextBlob(txt_input)
+        sentiment = blob.sentiment.polarity
 
-    # --- Display sentiment score ---
-    st.markdown(f"### Sentiment Score: {score:.2f}")
+        st.subheader("Sentiment Analysis Result")
+        if sentiment > 0:
+            st.success("😊 Positive Sentiment")
+        elif sentiment < 0:
+            st.error("😞 Negative Sentiment")
+        else:
+            st.info("😐 Neutral Sentiment")
 
-    # --- Emoji / confidence feedback ---
-    if score > 0.5:
-        st.success("😊 Very Positive")
-    elif score > 0:
-        st.info("🙂 Slightly Positive")
-    elif score == 0:
-        st.warning("😐 Neutral")
-    elif score > -0.5:
-        st.warning("🙁 Slightly Negative")
+        st.write(f"*Sentiment Score:* {sentiment}")
     else:
-        st.error("😡 Very Negative")
-
-    # --- Optional export ---
-    df = pd.DataFrame({"Text": [cleaned_text], "Score": [score]})
-    csv = df.to_csv(index=False)
-    st.download_button("📥 Download Result as CSV", csv, "sentiment_result.csv", "text/csv")
+        st.warning("Please enter some text to analyze.")
