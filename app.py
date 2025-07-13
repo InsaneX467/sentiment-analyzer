@@ -22,6 +22,10 @@ def get_voice_input():
     return ""
 
 # --- PAGE CONFIG ---
+st.markdown(
+    '<meta name="google-site-verification" content="IH12TWW4S5y7HBJOp4GbhrDBPwylUE-jEglVe2NkgxM" />' ,
+    unsafe_allow_html=True
+    )
 st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="💭", layout="centered")
 
 # --- HEADER ---
