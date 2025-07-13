@@ -1,3 +1,5 @@
 streamlit
 textblob
 matplotlib
+PyPDF2
+Speechrecognition
