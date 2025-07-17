@@ -1,8 +1,10 @@
 import streamlit as st
-
-st.markdown(
-    '<meta name="google-site-verification" content="IH12TWW4S5y7HBJOp4GbhrDBPwylUE-jEglVe2NkgxM" />' ,
-    unsafe_allow_html=True
+import streamlit.components.v1 as components
+components.html(
+    """
+    '<meta name="google-site-verification" content="IH12TWW4S5y7HBJOp4GbhrDBPwylUE-jEglVe2NkgxM" />'
+    """,
+    height=0
     )
 
 import speech_recognition as sr
