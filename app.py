@@ -3,71 +3,123 @@ from textblob import TextBlob
 import speech_recognition as sr
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="AI Sentiment Analyzer", layout="centered")
+# -------------------------------
+# App Configuration
+# -------------------------------
+st.set_page_config(page_title="🎤 AI Sentiment Analyzer", page_icon="😊", layout="wide")
 
-st.title("🧠 AI Sentiment Analyzer")
-st.write("Analyze sentiment from text input or your voice.")
+# Custom CSS for dark theme + background styling
+st.markdown("""
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .stTextArea textarea {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-radius: 10px;
+        }
+        .stButton>button {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 10px;
+            padding: 8px 20px;
+            font-size: 16px;
+        }
+        .stButton>button:hover {
+            background-color: #45a049;
+            color: #fff;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# --- Voice Input Function ---
-def record_voice():
+# -------------------------------
+# Voice Input Function
+# -------------------------------
+def get_voice_input():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.info("🎤 Listening... please speak clearly.")
-        audio = recognizer.listen(source, phrase_time_limit=5)
-    try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"✅ You said: {text}")
-        return text
-    except sr.UnknownValueError:
-        st.error("Sorry, could not understand the audio.")
-        return ""
-    except sr.RequestError:
-        st.error("Could not connect to the recognition service.")
-        return ""
+        st.info("🎙 Speak now...")
+        try:
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+            text = recognizer.recognize_google(audio)
+            return text
+        except sr.UnknownValueError:
+            st.error("❌ Could not understand the audio.")
+        except sr.RequestError:
+            st.error("⚠ API unavailable. Try again later.")
+        except sr.WaitTimeoutError:
+            st.warning("⌛ You took too long. Please try again.")
+    return ""
 
-# --- Session State Setup ---
-if "voice_input" not in st.session_state:
-    st.session_state.voice_input = ""
+# -------------------------------
+# UI Layout
+# -------------------------------
+st.title("🎤 AI Sentiment Analyzer")
+st.markdown("💬 Type or speak your thoughts, and let AI detect the mood instantly!")
 
-# --- Input Options ---
-manual_text = st.text_area("✍ Enter text manually:", key="manual_input")
+# Initialize session state for storing input
+if "manual_input" not in st.session_state:
+    st.session_state.manual_input = ""
 
-if st.button("🎤 Record Voice"):
-    st.session_state.voice_input = record_voice()
+# Text area for manual input
+st.markdown("### ✍ Enter Text or Use Voice")
+text_area = st.text_area("Write your text here:", st.session_state.manual_input, height=100)
 
-voice_text = st.session_state.voice_input
-if voice_text:
-    st.info(f"🎤 Voice Input: {voice_text}")
+# Buttons in columns
+col1, col2 = st.columns(2)
 
-# --- Analyze Sentiment ---
-if st.button("🔍 Analyze Sentiment"):
-    text_to_analyze = manual_text or voice_text  # Use whichever is available
+with col1:
+    if st.button("🎤 Speak"):
+        voice_text = get_voice_input()
+        if voice_text:
+            st.session_state.manual_input = voice_text
+            st.experimental_rerun()
 
-    if not text_to_analyze.strip():
-        st.warning("⚠ Please enter or record some text before analyzing.")
-    else:
-        analysis = TextBlob(text_to_analyze)
-        polarity = analysis.sentiment.polarity
-        subjectivity = analysis.sentiment.subjectivity
+with col2:
+    analyze_btn = st.button("🔍 Analyze Sentiment")
 
-        st.subheader("📊 Sentiment Analysis Result")
-        if polarity > 0:
-            st.success("Positive 😊")
-        elif polarity < 0:
-            st.error("Negative 😠")
+# -------------------------------
+# Sentiment Analysis
+# -------------------------------
+if analyze_btn:
+    text = text_area.strip() or st.session_state.get("manual_input", "")
+    if text:
+        blob = TextBlob(text)
+        sentiment = blob.sentiment.polarity
+        subjectivity = blob.sentiment.subjectivity
+
+        # Display sentiment score
+        st.success(f"*Sentiment Score (Polarity):* {sentiment:.2f}")
+        st.info(f"*Subjectivity Score:* {subjectivity:.2f}")
+
+        # Emoji feedback
+        if sentiment > 0:
+            st.markdown("### 😃 Positive Vibes!")
+        elif sentiment < 0:
+            st.markdown("### 😞 Negative Mood")
         else:
-            st.info("Neutral 😐")
+            st.markdown("### 😐 Neutral")
 
-        # Display metrics
-        col1, col2 = st.columns(2)
-        col1.metric("Polarity", f"{polarity:.2f}")
-        col2.metric("Subjectivity", f"{subjectivity:.2f}")
-
-        # --- Visualization ---
+        # Chart visualization
         fig, ax = plt.subplots()
-        labels = ["Polarity", "Subjectivity"]
-        values = [polarity, subjectivity]
-        ax.bar(labels, values)
+        ax.bar(["Polarity", "Subjectivity"], [sentiment, subjectivity], color=["skyblue", "orange"])
+        ax.axhline(0, color="white", linewidth=1)
         ax.set_ylim(-1, 1)
-        ax.set_title("Sentiment Metrics")
+        ax.set_facecolor("#1e1e1e")
+        fig.patch.set_facecolor("#121212")
         st.pyplot(fig)
+
+        # -------------------------------
+        # Explanations
+        # -------------------------------
+        st.markdown("### 📘 What do these mean?")
+        st.markdown("""
+        - *Polarity: Ranges from **-1 (negative)* to *+1 (positive)*.  
+          It tells if the text is emotionally negative, neutral, or positive.  
+        - *Subjectivity: Ranges from **0 (objective/factual)* to *1 (subjective/opinionated)*.  
+          It shows whether the text is more factual or personal in nature.
+        """)
+    else:
+        st.warning("⚠ Please enter some text or use voice input first.")
