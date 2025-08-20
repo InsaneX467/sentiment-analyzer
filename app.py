@@ -1,103 +1,72 @@
 import streamlit as st
-import streamlit.components.v1 as components
-components.html(
-    """
-    '<meta name="google-site-verification" content="IH12TWW4S5y7HBJOp4GbhrDBPwylUE-jEglVe2NkgxM" />'
-    """,
-    height=0
-    )
-
-import speech_recognition as sr
-import PyPDF2
 from textblob import TextBlob
+import speech_recognition as sr
+from PyPDF2 import PdfReader
 import matplotlib.pyplot as plt
 
-# --- VOICE INPUT FUNCTION ---
-def get_voice_input():
+st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="📩")
+
+st.title("📩 AI Sentiment Analyzer")
+st.write("Upload a file, enter text, or use your voice to analyze sentiment.")
+
+# File upload (TXT + PDF)
+uploaded_file = st.file_uploader("Upload a .txt or .pdf file", type=["txt", "pdf"])
+
+# Text input with session state
+text = st.text_area("Or enter text manually:", key="manual_text")
+
+# Voice input button
+if st.button("🎙 Use Voice Input"):
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.info("🎤 Listening... Please speak clearly into your microphone.")
-        audio = recognizer.listen(source)
-
+        st.write("🎤 Listening... Speak now!")
+        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
     try:
-        text = recognizer.recognize_google(audio)
-        st.success(f"✅ You said: {text}")
-        return text
-    except sr.UnknownValueError:
-        st.error("❌ Could not understand audio.")
-    except sr.RequestError:
-        st.error("❌ Speech Recognition API unavailable.")
-    return ""
+        voice_text = recognizer.recognize_google(audio)
+        st.session_state.manual_text = voice_text
+        st.success(f"Voice captured: {voice_text}")
+    except Exception as e:
+        st.error(f"Voice input error: {e}")
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="💭", layout="centered")
+# Analyze button
+if st.button("🔍 Analyze Sentiment"):
+    text_to_analyze = ""
 
-# --- HEADER ---
-st.markdown("""
-    <h1 style='text-align: center; color: #800080;'>💭 AI Sentiment Analyzer</h1>
-    <p style='text-align: center; font-size: 18px;'>Analyze how positive, negative, or neutral your text is!</p>
-""", unsafe_allow_html=True)
-st.markdown("---")
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("📘 About the App")
-    st.markdown("This is a simple AI sentiment analyzer built using Python, Streamlit, and TextBlob.")
-    st.markdown("Made with 💙 by Insanex467")
-
-# --- LAYOUT ---
-col1, col2 = st.columns([1, 2])
-if "text_input" not in st.session_state:
-    st.session_state.text_input = ""
-
-with col1:
-    st.image("https://cdn-icons-png.flaticon.com/512/3062/3062634.png", width=120, caption="Sentiment Icon")
-
-with col2:
-    st.subheader("📝 Enter your text below:")
-    uploaded_file = st.file_uploader("Upload a .txt or .pdf file", type=["txt", "pdf"])
-
-    # 1. FILE INPUT
+    # If user uploaded file
     if uploaded_file is not None:
         if uploaded_file.type == "text/plain":
-            st.session_state.text_input = uploaded_file.read().decode("utf-8")
+            text_to_analyze = uploaded_file.read().decode("utf-8")
         elif uploaded_file.type == "application/pdf":
-            pdf_reader = PyPDF2.PdfReader(uploaded_file)
-            text = ""
+            pdf_reader = PdfReader(uploaded_file)
             for page in pdf_reader.pages:
-                text += page.extract_text()
-            st.session_state.text_input = text
+                text_to_analyze += page.extract_text()
 
-    # 2. MANUAL TEXT AREA
-    manual_input = st.text_area("Or enter text manually:", value=st.session_state.text_input, key="manual_input", height=150)
-
-    # 3. VOICE INPUT
-    if st.button("🎙 Use Voice Input"):
-        voice_text = get_voice_input()
-        if voice_text:
-            st.session_state.text_input = voice_text
-            st.rerun()  # rerun to update textarea with voice input
-
-# --- SENTIMENT ANALYSIS ---
-if st.button("🔍 Analyze Sentiment"):
-    if not st.session_state.text_input.strip():
-        st.warning("⚠ Please enter some text.")
     else:
-        blob = TextBlob(st.session_state.text_input)
+        text_to_analyze = st.session_state.manual_text.strip()
+
+    if not text_to_analyze:
+        st.warning("⚠ Please provide text via upload, typing, or voice.")
+    else:
+        # Sentiment analysis
+        blob = TextBlob(text_to_analyze)
         polarity = blob.sentiment.polarity
+        subjectivity = blob.sentiment.subjectivity
 
-        st.subheader("📈 Sentiment Analysis Result")
+        st.subheader("📊 Sentiment Results")
         if polarity > 0:
-            st.markdown("<h3 style='color:green;'>🙂 Positive Sentiment</h3>", unsafe_allow_html=True)
+            st.success("😊 Positive Sentiment")
         elif polarity < 0:
-            st.markdown("<h3 style='color:red;'>☹ Negative Sentiment</h3>", unsafe_allow_html=True)
+            st.error("☹ Negative Sentiment")
         else:
-            st.markdown("<h3 style='color:gray;'>😐 Neutral Sentiment</h3>", unsafe_allow_html=True)
+            st.info("😐 Neutral Sentiment")
 
-        # Bar chart
+        st.write(f"*Polarity:* {polarity:.2f}")
+        st.write(f"*Subjectivity:* {subjectivity:.2f}")
+
+        # Bar chart visualization
+        st.subheader("📈 Visualization")
         fig, ax = plt.subplots()
-        ax.bar("Sentiment", [polarity], color="skyblue")
-        ax.set_ylim([-1, 1])
-        ax.set_xlabel("Polarity Score (-1 to 1)")
-        ax.axhline(0, color="black", linestyle="--")
+        ax.bar(["Polarity", "Subjectivity"], [polarity, subjectivity])
+        ax.set_ylim(-1, 1)
+        ax.set_ylabel("Score")
         st.pyplot(fig)
