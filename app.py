@@ -1,72 +1,73 @@
 import streamlit as st
 from textblob import TextBlob
 import speech_recognition as sr
-from PyPDF2 import PdfReader
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="📩")
+st.set_page_config(page_title="AI Sentiment Analyzer", layout="centered")
 
-st.title("📩 AI Sentiment Analyzer")
-st.write("Upload a file, enter text, or use your voice to analyze sentiment.")
+st.title("🧠 AI Sentiment Analyzer")
+st.write("Analyze sentiment from text input or your voice.")
 
-# File upload (TXT + PDF)
-uploaded_file = st.file_uploader("Upload a .txt or .pdf file", type=["txt", "pdf"])
-
-# Text input with session state
-text = st.text_area("Or enter text manually:", key="manual_text")
-
-# Voice input button
-if st.button("🎙 Use Voice Input"):
+# --- Voice Input Function ---
+def record_voice():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        st.write("🎤 Listening... Speak now!")
-        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+        st.info("🎤 Listening... please speak clearly.")
+        audio = recognizer.listen(source, phrase_time_limit=5)
     try:
-        voice_text = recognizer.recognize_google(audio)
-        st.session_state.manual_text = voice_text
-        st.success(f"Voice captured: {voice_text}")
-    except Exception as e:
-        st.error(f"Voice input error: {e}")
+        text = recognizer.recognize_google(audio)
+        st.success(f"✅ You said: {text}")
+        return text
+    except sr.UnknownValueError:
+        st.error("Sorry, could not understand the audio.")
+        return ""
+    except sr.RequestError:
+        st.error("Could not connect to the recognition service.")
+        return ""
 
-# Analyze button
+# --- Session State Setup ---
+if "voice_input" not in st.session_state:
+    st.session_state.voice_input = ""
+
+# --- Input Options ---
+manual_text = st.text_area("✍ Enter text manually:", key="manual_input")
+
+if st.button("🎤 Record Voice"):
+    st.session_state.voice_input = record_voice()
+
+voice_text = st.session_state.voice_input
+if voice_text:
+    st.info(f"🎤 Voice Input: {voice_text}")
+
+# --- Analyze Sentiment ---
 if st.button("🔍 Analyze Sentiment"):
-    text_to_analyze = ""
+    text_to_analyze = manual_text or voice_text  # Use whichever is available
 
-    # If user uploaded file
-    if uploaded_file is not None:
-        if uploaded_file.type == "text/plain":
-            text_to_analyze = uploaded_file.read().decode("utf-8")
-        elif uploaded_file.type == "application/pdf":
-            pdf_reader = PdfReader(uploaded_file)
-            for page in pdf_reader.pages:
-                text_to_analyze += page.extract_text()
-
+    if not text_to_analyze.strip():
+        st.warning("⚠ Please enter or record some text before analyzing.")
     else:
-        text_to_analyze = st.session_state.manual_text.strip()
+        analysis = TextBlob(text_to_analyze)
+        polarity = analysis.sentiment.polarity
+        subjectivity = analysis.sentiment.subjectivity
 
-    if not text_to_analyze:
-        st.warning("⚠ Please provide text via upload, typing, or voice.")
-    else:
-        # Sentiment analysis
-        blob = TextBlob(text_to_analyze)
-        polarity = blob.sentiment.polarity
-        subjectivity = blob.sentiment.subjectivity
-
-        st.subheader("📊 Sentiment Results")
+        st.subheader("📊 Sentiment Analysis Result")
         if polarity > 0:
-            st.success("😊 Positive Sentiment")
+            st.success("Positive 😊")
         elif polarity < 0:
-            st.error("☹ Negative Sentiment")
+            st.error("Negative 😠")
         else:
-            st.info("😐 Neutral Sentiment")
+            st.info("Neutral 😐")
 
-        st.write(f"*Polarity:* {polarity:.2f}")
-        st.write(f"*Subjectivity:* {subjectivity:.2f}")
+        # Display metrics
+        col1, col2 = st.columns(2)
+        col1.metric("Polarity", f"{polarity:.2f}")
+        col2.metric("Subjectivity", f"{subjectivity:.2f}")
 
-        # Bar chart visualization
-        st.subheader("📈 Visualization")
+        # --- Visualization ---
         fig, ax = plt.subplots()
-        ax.bar(["Polarity", "Subjectivity"], [polarity, subjectivity])
+        labels = ["Polarity", "Subjectivity"]
+        values = [polarity, subjectivity]
+        ax.bar(labels, values)
         ax.set_ylim(-1, 1)
-        ax.set_ylabel("Score")
+        ax.set_title("Sentiment Metrics")
         st.pyplot(fig)
