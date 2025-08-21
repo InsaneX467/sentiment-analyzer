@@ -8,28 +8,45 @@ import matplotlib.pyplot as plt
 # -------------------------------
 st.set_page_config(page_title="🎤 AI Sentiment Analyzer", page_icon="😊", layout="wide")
 
-# Custom CSS for dark theme + background styling
+# Custom CSS for modern UI
 st.markdown("""
     <style>
         body {
-            background-color: #121212;
-            color: #ffffff;
+            background-color: #f8f9fa;
+            color: #333333;
         }
         .stTextArea textarea {
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border-radius: 10px;
-        }
-        .stButton>button {
-            background-color: #4CAF50;
-            color: white;
-            border-radius: 10px;
-            padding: 8px 20px;
+            background-color: #ffffff !important;
+            color: #333333 !important;
+            border: 1px solid #dcdcdc;
+            border-radius: 12px;
+            padding: 10px;
             font-size: 16px;
         }
+        .stButton>button {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            color: white;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            transition: all 0.3s ease;
+        }
         .stButton>button:hover {
-            background-color: #45a049;
-            color: #fff;
+            background: linear-gradient(90deg, #00f2fe, #4facfe);
+            transform: scale(1.05);
+        }
+        .result-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+        }
+        .emoji {
+            font-size: 40px;
+            text-align: center;
+            margin-bottom: 10px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -64,8 +81,7 @@ if "manual_input" not in st.session_state:
     st.session_state.manual_input = ""
 
 # Text area for manual input
-st.markdown("### ✍ Enter Text or Use Voice")
-text_area = st.text_area("Write your text here:", st.session_state.manual_input, height=100)
+text_area = st.text_area("✍ Enter your text here:", st.session_state.manual_input, height=100)
 
 # Buttons in columns
 col1, col2 = st.columns(2)
@@ -90,30 +106,31 @@ if analyze_btn:
         sentiment = blob.sentiment.polarity
         subjectivity = blob.sentiment.subjectivity
 
-        # Display sentiment score
-        st.success(f"*Sentiment Score (Polarity):* {sentiment:.2f}")
-        st.info(f"*Subjectivity Score:* {subjectivity:.2f}")
+        # Result card
+        st.markdown('<div class="result-card">', unsafe_allow_html=True)
 
         # Emoji feedback
         if sentiment > 0:
-            st.markdown("### 😃 Positive Vibes!")
+            st.markdown('<div class="emoji">😃</div>', unsafe_allow_html=True)
+            st.markdown("### Positive Vibes!")
         elif sentiment < 0:
-            st.markdown("### 😞 Negative Mood")
+            st.markdown('<div class="emoji">😞</div>', unsafe_allow_html=True)
+            st.markdown("### Negative Mood")
         else:
-            st.markdown("### 😐 Neutral")
+            st.markdown('<div class="emoji">😐</div>', unsafe_allow_html=True)
+            st.markdown("### Neutral")
+
+        st.success(f"*Sentiment Score (Polarity):* {sentiment:.2f}")
+        st.info(f"*Subjectivity Score:* {subjectivity:.2f}")
 
         # Chart visualization
         fig, ax = plt.subplots()
-        ax.bar(["Polarity", "Subjectivity"], [sentiment, subjectivity], color=["skyblue", "orange"])
-        ax.axhline(0, color="white", linewidth=1)
+        ax.bar(["Polarity", "Subjectivity"], [sentiment, subjectivity], color=["#4facfe", "#ffb347"])
+        ax.axhline(0, color="gray", linewidth=1)
         ax.set_ylim(-1, 1)
-        ax.set_facecolor("#1e1e1e")
-        fig.patch.set_facecolor("#121212")
         st.pyplot(fig)
 
-        # -------------------------------
-        # Explanations
-        # -------------------------------
+        # Definitions
         st.markdown("### 📘 What do these mean?")
         st.markdown("""
         - *Polarity: Ranges from **-1 (negative)* to *+1 (positive)*.  
@@ -121,5 +138,7 @@ if analyze_btn:
         - *Subjectivity: Ranges from **0 (objective/factual)* to *1 (subjective/opinionated)*.  
           It shows whether the text is more factual or personal in nature.
         """)
+
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("⚠ Please enter some text or use voice input first.")
