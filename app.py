@@ -1,66 +1,72 @@
 import streamlit as st
+from textblob import TextBlob
 import speech_recognition as sr
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- Page Config ---
-st.set_page_config(page_title="AI Sentiment Analyzer", page_icon="💬", layout="centered")
-
-# --- App Title ---
-st.title("🎙 AI Sentiment Analyzer")
-st.write("Analyze *text or voice input* and discover its sentiment instantly.")
-
-# --- Initialize Recognizer & Analyzer ---
-recognizer = sr.Recognizer()
+# Initialize VADER
 analyzer = SentimentIntensityAnalyzer()
 
-# --- Sidebar Info ---
-with st.sidebar:
-    st.header("ℹ About")
-    st.write("This app uses *VADER Sentiment Analysis*, which is great for social media, casual texts, and voice input.")
-    st.write("It gives scores for *Positive, Neutral, Negative* and an overall *Compound Sentiment*.")
+st.set_page_config(page_title="AI Sentiment Analyzer", layout="centered")
 
-# --- Text / Voice Input ---
-st.subheader("📝 Enter Text or Use Voice")
-text_input = st.text_area("Enter your text here:", height=150, placeholder="Type something or use voice...")
+st.title("🎤 AI Sentiment Analyzer")
+st.write("Analyze sentiment from *typed text* or *voice input*.")
 
-if st.button("🎤 Use Voice Input"):
-    with sr.Microphone() as source:
-        st.info("Listening... Speak now!")
+# --- Input section ---
+st.subheader("Enter Text or Use Voice Input")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    user_input = st.text_area("Your text here:", key="manual_input", height=120)
+
+with col2:
+    if st.button("🎙 Speak"):
+        recognizer = sr.Recognizer()
+        with sr.Microphone() as source:
+            st.info("Listening... please speak")
+            audio = recognizer.listen(source, phrase_time_limit=5)
         try:
-            audio = recognizer.listen(source, timeout=5)
-            text_input = recognizer.recognize_google(audio)
-            st.success(f"Voice captured: {text_input}")
-            st.session_state["text_input"] = text_input
-        except Exception as e:
-            st.error(f"Error: {e}")
+            voice_text = recognizer.recognize_google(audio)
+            st.success(f"Voice captured: {voice_text}")
+            user_input = voice_text
+        except sr.UnknownValueError:
+            st.error("Sorry, I could not understand the audio.")
+        except sr.RequestError:
+            st.error("Speech Recognition service error.")
 
 # --- Sentiment Analysis ---
 if st.button("🔎 Analyze Sentiment"):
-    if text_input:
-        scores = analyzer.polarity_scores(text_input)
-        compound = scores['compound']
-        pos, neu, neg = scores['pos'], scores['neu'], scores['neg']
+    if user_input.strip() == "":
+        st.warning("⚠ Please enter some text or use voice input.")
+    else:
+        # TextBlob analysis
+        blob = TextBlob(user_input)
+        polarity = blob.sentiment.polarity
+        subjectivity = blob.sentiment.subjectivity
 
-        # Decide sentiment label
-        if compound >= 0.05:
-            sentiment = "Positive 😃"
-        elif compound <= -0.05:
-            sentiment = "Negative 😞"
+        # VADER analysis
+        vader_scores = analyzer.polarity_scores(user_input)
+        vader_compound = vader_scores['compound']
+
+        # Final sentiment decision (weighted combo)
+        if vader_compound >= 0.05:
+            sentiment = "😊 Positive"
+        elif vader_compound <= -0.05:
+            sentiment = "😞 Negative"
         else:
-            sentiment = "Neutral 😐"
+            sentiment = "😐 Neutral"
 
         # --- Results ---
-        st.markdown("## 📊 Results")
-        st.success(f"*Overall Sentiment:* {sentiment}")
-        st.write(f"*Positive Score:* {pos:.2f}")
-        st.write(f"*Neutral Score:* {neu:.2f}")
-        st.write(f"*Negative Score:* {neg:.2f}")
-        st.write(f"*Compound Score:* {compound:.2f}")
+        st.subheader("📊 Sentiment Results")
+        st.markdown(f"*Overall Sentiment:* {sentiment}")
+        st.markdown(f"*Polarity (TextBlob):* {polarity:.2f}")
+        st.markdown(f"*Subjectivity (TextBlob):* {subjectivity:.2f}")
+        st.markdown(f"*VADER Compound Score:* {vader_compound:.2f}")
 
-        # --- Explanation ---
-        st.markdown("---")
-        st.markdown("### 📖 What the Scores Mean")
-        st.write("- *Positive/Neutral/Negative:* Probability of each tone in the text.")
-        st.write("- *Compound Score:* Overall sentiment, from -1 (most negative) to +1 (most positive).")
-    else:
-        st.warning("⚠ Please enter some text or use voice input.")s
+        # Extra definitions
+        with st.expander("ℹ Learn about Polarity & Subjectivity"):
+            st.markdown("""
+            - *Polarity* ranges from -1.0 (very negative) to +1.0 (very positive).  
+            - *Subjectivity* ranges from 0.0 (very objective) to 1.0 (very subjective).  
+            - *VADER Compound Score* combines multiple sentiment signals into a value between -1 (negative) and +1 (positive).
+            """)
